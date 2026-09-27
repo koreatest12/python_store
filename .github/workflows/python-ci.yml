@@ -71,5 +71,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Prepare pre-tokenized JSONL dataset
+        run: python prepare_dataset.py examples/dataset.jsonl --format jsonl --output build/pretokenized-jsonl.jsonl --lowercase
+
+      - name: Prepare pre-tokenized CSV dataset
+        run: python prepare_dataset.py examples/dataset.csv --format csv --output build/pretokenized-csv.jsonl
+
+      - name: Verify prepared datasets
+        run: |
+          test -s build/pretokenized-jsonl.jsonl
+          test -s build/pretokenized-csv.jsonl
+
       - name: Compile Python sources
         run: python -m compileall -q .
