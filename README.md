@@ -418,3 +418,43 @@ GitHub Actions에서는 스케줄 실행 또는 **Run workflow → cycle** 선�
 중복 실행 방지를 위해 concurrency group을 사용하며, 각 실행 결과는 run 번호가 포함된 `data-token-bot-output-<run_number>` Artifact로 30일간 저장됩니다.
 
 > GitHub Actions의 scheduled workflow는 5분 간격으로 설정할 수 있지만, GitHub 서비스 부하에 따라 실제 시작 시각은 몇 분 지연될 수 있습니다.
+
+
+## Tiny Code 생성
+
+`tiny_code.py`는 저장소 기능을 빠르게 확인할 수 있는 **작고 실행 가능한 Python 예제 코드**를 자동 생성합니다. 외부 AI API 없이 검증된 템플릿 방식으로 생성하며, 생성 직후 Python AST 구문 검사를 수행합니다.
+
+지원 템플릿:
+
+- `tokenize`
+- `pretokenize`
+- `dataset`
+- `train-bpe`
+- `repository`
+- `bot-cycle`
+
+전체 생성:
+
+```powershell
+python tiny_code.py all
+```
+
+특정 예제 생성:
+
+```powershell
+python tiny_code.py tokenize
+```
+
+기본 출력 위치:
+
+```text
+bot_workspace/tiny_code/
+```
+
+Data Token Bot에서도 다음 명령을 지원합니다.
+
+```powershell
+python bot.py tiny-code
+```
+
+또한 5분 자동 `cycle`에 Tiny Code 생성 단계가 포함되어, 매 순환마다 현재 저장소 구조에 맞는 예제 코드 6종을 다시 생성하고 Artifact에 함께 보관합니다. Python CI에서도 Tiny Code 전체 생성과 `compileall` 구문 검증을 수행합니다.
