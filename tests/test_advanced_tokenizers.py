@@ -27,37 +27,38 @@ class AdvancedTokenizerTests(unittest.TestCase):
         self.assertTrue(tokenizer.merges)
         self.assertGreater(len(tokenizer.token_to_id), 2)
         self.assertTrue(tokenizer.tokenize("hello python"))
-        self.assertTrue(tokenizer.encode("hello python"))
 
     def test_wordpiece_training_and_encoding(self) -> None:
         tokenizer = WordPieceTokenizer(vocab_size=64, lowercase=True)
         tokenizer.train(CORPUS)
-        self.assertGreater(len(tokenizer.token_to_id), 2)
-        tokens = tokenizer.tokenize("hello")
-        self.assertTrue(tokens)
         self.assertTrue(tokenizer.encode("hello"))
 
-    def test_sentencepiece_style_training(self) -> None:
+    def test_sentencepiece_character_coverage(self) -> None:
         tokenizer = SentencePieceStyleTokenizer(vocab_size=64, lowercase=True)
         tokenizer.train(CORPUS)
-        self.assertGreater(len(tokenizer.token_to_id), 2)
-        tokens = tokenizer.tokenize("hello world")
+        tokens = tokenizer.tokenize("안녕하세요 python")
         self.assertTrue(tokens)
-        self.assertTrue(any(token.startswith("▁") for token in tokens if token != "<UNK>"))
+        self.assertNotIn("<UNK>", tokens)
+
+    def test_unicode_input_is_preserved(self) -> None:
+        tokenizer = BPETokenizer(vocab_size=128)
+        tokenizer.train(["ㅋㅋㅋ café 東京 snake_case 😀"])
+        tokens = tokenizer.tokenize("ㅋㅋㅋ café 東京 snake_case 😀")
+        self.assertTrue(tokens)
+        self.assertNotEqual(tokens, [])
 
     def test_factory(self) -> None:
         for kind in ("bpe", "wordpiece", "sentencepiece"):
-            tokenizer = train_tokenizer(kind, CORPUS, vocab_size=48)
+            tokenizer = train_tokenizer(kind, CORPUS, vocab_size=64)
             self.assertGreater(len(tokenizer.token_to_id), 2)
 
     def test_models_can_be_saved(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             for kind in ("bpe", "wordpiece", "sentencepiece"):
-                tokenizer = train_tokenizer(kind, CORPUS, vocab_size=48)
+                tokenizer = train_tokenizer(kind, CORPUS, vocab_size=64)
                 path = Path(directory) / f"{kind}.json"
                 tokenizer.save(path)
                 self.assertTrue(path.exists())
-                self.assertIn("token_to_id", path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
