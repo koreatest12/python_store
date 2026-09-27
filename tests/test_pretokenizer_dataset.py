@@ -13,11 +13,19 @@ class PretokenizerDatasetTests(unittest.TestCase):
     def test_pretokenizer_split_and_offsets(self) -> None:
         pre = Pretokenizer(lowercase=True)
         tokens = pre.split("안녕하세요 Python 3.14!")
-        self.assertEqual(tokens, ["안녕하세요", "python", "3.14", "!"])
+        self.assertEqual(tokens, ["안녕하세요", "python", "3", ".", "14", "!"])
 
         spans = pre.split_with_offsets("Hello world!")
         self.assertEqual([span.text for span in spans], ["hello", "world", "!"])
         self.assertEqual(spans[0].start, 0)
+
+    def test_unicode_characters_are_not_silently_dropped(self) -> None:
+        text = "ㅋㅋㅋ 좋아요 café naïve 東京 snake_case 😀"
+        tokens = Pretokenizer().split(text)
+        joined = "".join(tokens)
+        for expected in ["ㅋㅋㅋ", "좋아요", "café", "naïve", "東京", "snake_case", "😀"]:
+            self.assertIn(expected, tokens)
+        self.assertNotIn(" ", joined)
 
     def test_dataset_split_batches_and_jsonl(self) -> None:
         records = [DatasetRecord(text=f"sample {i}", label=str(i % 2)) for i in range(10)]

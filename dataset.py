@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import inspect
 import json
 import random
 from dataclasses import asdict, dataclass
@@ -169,13 +170,15 @@ def build_tokenized_dataset(
 ) -> list[dict]:
     output: list[dict] = []
     for index, record in enumerate(dataset):
+        encode_signature = inspect.signature(tokenizer.encode)
+        supports_max_length = "max_length" in encode_signature.parameters
+
         if max_length is None:
             token_ids = tokenizer.encode(record.text)
+        elif supports_max_length:
+            token_ids = tokenizer.encode(record.text, max_length=max_length)
         else:
-            try:
-                token_ids = tokenizer.encode(record.text, max_length=max_length)
-            except TypeError:
-                token_ids = tokenizer.encode(record.text)[:max_length]
+            token_ids = tokenizer.encode(record.text)[:max_length]
 
         output.append(
             {

@@ -3,12 +3,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 SUPPORTED_MODEL_TYPES = {"bpe", "wordpiece", "sentencepiece", "simple"}
+_SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _check_segment(value: str, label: str) -> str:
+    if not _SAFE_SEGMENT.fullmatch(value) or value in {".", ".."}:
+        raise ValueError(f"invalid {label}: {value!r}")
+    return value
 
 
 @dataclass(slots=True)
@@ -32,7 +40,7 @@ def sha256_file(path: Path) -> str:
 
 class TokenRepository:
     def __init__(self, root: str | Path = "token_repository") -> None:
-        self.root = Path(root)
+        self.root = Path(root).resolve()
         self.models_dir = self.root / "models"
         self.downloads_dir = self.root / "downloads"
         self.manifest_path = self.root / "manifest.json"
@@ -50,6 +58,12 @@ class TokenRepository:
             encoding="utf-8",
         )
 
+    def _artifact_path(self, item: dict) -> Path:
+        path = (self.root / item["file"]).resolve()
+        if not path.is_relative_to(self.root):
+            raise ValueError(f"artifact path escapes repository: {item['file']!r}")
+        return path
+
     def add(
         self,
         source: str | Path,
@@ -65,17 +79,27 @@ class TokenRepository:
         if not source_path.is_file():
             raise FileNotFoundError(source_path)
 
-        safe_name = name.replace(" ", "-")
-        target_dir = self.models_dir / model_type / safe_name / version
+        safe_name = _check_segment(name, "name")
+        safe_version = _check_segment(version, "version")
+        safe_filename = _check_segment(source_path.name, "filename")
+
+        target_dir = (self.models_dir / model_type / safe_name / safe_version).resolve()
+        if not target_dir.is_relative_to(self.models_dir.resolve()):
+            raise ValueError("path escapes repository")
+
         target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / source_path.name
+        target = (target_dir / safe_filename).resolve()
+        if not target.is_relative_to(target_dir):
+            raise ValueError("target file escapes model directory")
+
         shutil.copy2(source_path, target)
+        relative_file = target.relative_to(self.root).as_posix()
 
         artifact = TokenArtifact(
-            name=name,
+            name=safe_name,
             model_type=model_type,
-            version=version,
-            file=target.as_posix(),
+            version=safe_version,
+            file=relative_file,
             sha256=sha256_file(target),
             size_bytes=target.stat().st_size,
             created_at=datetime.now(timezone.utc).isoformat(),
@@ -86,9 +110,9 @@ class TokenRepository:
             item
             for item in manifest["artifacts"]
             if not (
-                item["name"] == name
+                item["name"] == safe_name
                 and item["model_type"] == model_type
-                and item["version"] == version
+                and item["version"] == safe_version
             )
         ]
         manifest["artifacts"].append(asdict(artifact))
@@ -104,24 +128,28 @@ class TokenRepository:
     def verify(self) -> bool:
         valid = True
         for item in self.list():
-            path = Path(item["file"])
+            try:
+                path = self._artifact_path(item)
+            except ValueError:
+                valid = False
+                continue
             if not path.is_file() or sha256_file(path) != item["sha256"]:
                 valid = False
         return valid
 
     def export_download_bundle(self, output: str | Path | None = None) -> Path:
-        output_path = Path(output) if output else self.downloads_dir / "token-models"
+        output_path = Path(output).resolve() if output else self.downloads_dir / "token-models"
         if output_path.exists():
             shutil.rmtree(output_path)
         output_path.mkdir(parents=True, exist_ok=True)
 
         manifest = self._load_manifest()
         for item in manifest["artifacts"]:
-            source = Path(item["file"])
+            source = self._artifact_path(item)
             destination = (
                 output_path
                 / item["model_type"]
-                / item["name"].replace(" ", "-")
+                / item["name"]
                 / item["version"]
                 / source.name
             )
@@ -145,10 +173,7 @@ class TokenRepository:
         )
 
         archive_base = self.downloads_dir / "python-token-repository"
-        archive_path = Path(
-            shutil.make_archive(str(archive_base), "zip", root_dir=output_path)
-        )
-        return archive_path
+        return Path(shutil.make_archive(str(archive_base), "zip", root_dir=output_path))
 
 
 def build_parser() -> argparse.ArgumentParser:

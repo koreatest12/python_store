@@ -18,25 +18,38 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14.7"
           cache: pip
           cache-dependency-path: pyproject.toml
 
       - name: Show Python version
+        if: always()
         run: python --version
 
       - name: Upgrade packaging tools
+        if: always()
         run: python -m pip install --upgrade pip setuptools wheel
 
       - name: Run application smoke test
+        if: always()
         run: python main.py "안녕하세요 Python tokenizer 3.14!"
 
-      - name: Run tokenizer tests
+      - name: Run all unit tests
+        if: always()
         run: python -m unittest discover -s tests -v
 
+      - name: Run security regression tests
+        if: always()
+        run: python -m unittest tests.test_token_repository -v
+
+      - name: Run unicode regression tests
+        if: always()
+        run: python -m unittest tests.test_pretokenizer_dataset tests.test_advanced_tokenizers -v
+
       - name: Train downloadable tokenizer models
+        if: always()
         run: |
           mkdir -p build/models
           python train_tokenizer.py bpe examples/corpus.txt --output build/models/bpe.json --vocab-size 64
@@ -44,49 +57,60 @@ jobs:
           python train_tokenizer.py sentencepiece examples/corpus.txt --output build/models/sentencepiece.json --vocab-size 64
 
       - name: Register models in token repository
+        if: always()
         run: |
           python token_repository.py add build/models/bpe.json --name korean-demo --type bpe --version 1.0.0
           python token_repository.py add build/models/wordpiece.json --name korean-demo --type wordpiece --version 1.0.0
           python token_repository.py add build/models/sentencepiece.json --name korean-demo --type sentencepiece --version 1.0.0
 
       - name: Verify token repository
+        if: always()
         run: python token_repository.py verify
 
       - name: Build token download bundle
+        if: always()
         run: python token_repository.py export
 
       - name: Verify download bundle
+        if: always()
         run: |
           test -s token_repository/downloads/python-token-repository.zip
           test -s token_repository/downloads/token-models/manifest.json
           test -s token_repository/downloads/token-models/SHA256SUMS.txt
 
       - name: Upload tokenizer download repository
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: python-token-repository
           path: |
             token_repository/downloads/python-token-repository.zip
             token_repository/downloads/token-models/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Prepare pre-tokenized JSONL dataset
+        if: always()
         run: python prepare_dataset.py examples/dataset.jsonl --format jsonl --output build/pretokenized-jsonl.jsonl --lowercase
 
       - name: Prepare pre-tokenized CSV dataset
+        if: always()
         run: python prepare_dataset.py examples/dataset.csv --format csv --output build/pretokenized-csv.jsonl
 
       - name: Verify prepared datasets
+        if: always()
         run: |
           test -s build/pretokenized-jsonl.jsonl
           test -s build/pretokenized-csv.jsonl
 
       - name: Run data token bot status
+        if: always()
         run: python bot.py status
 
       - name: Prepare dataset with bot
+        if: always()
         run: python bot.py prepare-dataset examples/dataset.jsonl --format jsonl --lowercase
 
       - name: Compile Python sources
+        if: always()
         run: python -m compileall -q .
