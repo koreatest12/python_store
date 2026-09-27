@@ -219,3 +219,85 @@ token_repository/downloads/python-token-repository.zip
 ```
 
 GitHub Actions가 실행되면 BPE, WordPiece, SentencePiece 스타일 예제 모델을 자동 학습하고 이 보관소에 등록한 뒤 `python-token-repository`라는 다운로드 Artifact로 제공합니다.
+
+
+## 사전 토큰화 (Pre-tokenization)
+
+`pretokenizer.py`는 토크나이저 학습이나 모델 입력 전에 텍스트를 정규화하고 1차 토큰 단위로 나누는 기능을 제공합니다.
+
+지원 기능:
+
+- Unicode NFKC 정규화
+- 선택적 소문자 변환
+- 선택적 accent 제거
+- 연속 공백 정리
+- 한글 / 영문 / 숫자 / 문장부호 분리
+- token offset(start/end) 반환
+- 여러 문장 batch pre-tokenization
+
+사용 예시:
+
+```python
+from pretokenizer import Pretokenizer
+
+pre = Pretokenizer(lowercase=True)
+print(pre.split("안녕하세요 Python 3.14!"))
+print(pre.split_with_offsets("Hello world!"))
+```
+
+## 데이터셋 기능
+
+`dataset.py`에서 학습용 텍스트 데이터셋을 다룰 수 있습니다.
+
+지원 기능:
+
+- 일반 TXT 파일 로딩
+- JSONL 로딩 / 저장
+- CSV 로딩 / 저장
+- `DatasetRecord(text, label, metadata)`
+- train / validation / test 분할
+- seed 기반 재현 가능한 shuffle
+- batch 생성
+- text 목록 추출
+- tokenizer와 연결한 `input_ids` 데이터셋 생성
+
+예시:
+
+```python
+from dataset import TextDataset
+
+dataset = TextDataset.from_jsonl("examples/dataset.jsonl")
+split = dataset.split(
+    train_ratio=0.8,
+    validation_ratio=0.1,
+    test_ratio=0.1,
+    seed=42,
+)
+
+for batch in dataset.batches(2):
+    print(batch)
+```
+
+### 사전 토큰화 데이터셋 생성 CLI
+
+JSONL:
+
+```powershell
+python prepare_dataset.py examples/dataset.jsonl --format jsonl --output build/pretokenized.jsonl --lowercase
+```
+
+CSV:
+
+```powershell
+python prepare_dataset.py examples/dataset.csv --format csv --output build/pretokenized-csv.jsonl
+```
+
+출력 JSONL에는 다음 정보가 포함됩니다.
+
+- record id
+- 원문 text
+- label
+- pre-tokenized tokens
+- 각 token의 start/end offset
+
+이 기능은 이후 BPE / WordPiece / SentencePiece 스타일 vocabulary 학습 전처리 단계에도 활용할 수 있습니다.
