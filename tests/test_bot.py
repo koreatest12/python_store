@@ -20,6 +20,39 @@ class DataTokenBotTests(unittest.TestCase):
             self.assertEqual(report.status, "ok")
             self.assertEqual(report.details["records"], 2)
 
+    def test_cycle_runs_all_stages(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            jsonl = base / "dataset.jsonl"
+            csv = base / "dataset.csv"
+            corpus = base / "corpus.txt"
+
+            jsonl.write_text(
+                '{"text":"안녕하세요","label":"ko"}\n{"text":"hello","label":"en"}\n',
+                encoding="utf-8",
+            )
+            csv.write_text(
+                'text,label\n"안녕하세요",ko\n"hello",en\n',
+                encoding="utf-8",
+            )
+            corpus.write_text(
+                "안녕하세요 토크나이저\nhello tokenizer\n",
+                encoding="utf-8",
+            )
+
+            bot = DataTokenBot(base / "workspace")
+            report = bot.cycle(
+                jsonl_dataset=jsonl,
+                csv_dataset=csv,
+                corpus=corpus,
+                vocab_size=64,
+            )
+
+            self.assertEqual(report.status, "ok")
+            self.assertEqual(report.details["stage_count"], 9)
+            self.assertEqual(report.details["failed_stage_count"], 0)
+            self.assertTrue((base / "workspace" / "reports" / "latest-cycle.json").exists())
+
     def test_train_and_register(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             corpus = Path(directory) / "corpus.txt"

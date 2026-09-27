@@ -1,13 +1,17 @@
 name: Data Token Bot
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       command:
         description: Bot command
         required: true
+        default: cycle
         type: choice
         options:
+          - cycle
           - status
           - prepare-dataset
           - train-register
@@ -26,38 +30,52 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: data-token-bot-cycle
+  cancel-in-progress: false
+
 jobs:
   bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14.7"
 
+      - name: Run full 5-minute cycle
+        if: github.event_name == 'schedule' || inputs.command == 'cycle'
+        run: python bot.py cycle --version 1.0.0 --vocab-size 128
+
       - name: Run bot status
-        if: inputs.command == 'status'
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'status'
         run: python bot.py status
 
       - name: Prepare example dataset
-        if: inputs.command == 'prepare-dataset'
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'prepare-dataset'
         run: python bot.py prepare-dataset examples/dataset.jsonl --format jsonl --lowercase
 
       - name: Train and register tokenizer
-        if: inputs.command == 'train-register'
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'train-register'
         run: python bot.py train-register examples/corpus.txt --kind "${{ inputs.tokenizer }}" --name github-bot-demo --version 1.0.0 --vocab-size 128
 
       - name: Export repository
-        if: inputs.command == 'export'
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'export'
         run: python bot.py export
 
+      - name: Verify cycle report
+        if: always() && (github.event_name == 'schedule' || inputs.command == 'cycle')
+        run: test -s bot_workspace/reports/latest-cycle.json
+
       - name: Upload bot workspace
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: data-token-bot-output
+          name: data-token-bot-output-${{ github.run_number }}
           path: |
             bot_workspace/
             token_repository/
