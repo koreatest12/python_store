@@ -1,0 +1,11 @@
+[project]
+name = "python-store"
+version = "0.1.0"
+description = "Python examples and experiments"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+license = { text = "Apache-2.0" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
