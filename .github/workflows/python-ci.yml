@@ -36,20 +36,40 @@ jobs:
       - name: Run tokenizer tests
         run: python -m unittest discover -s tests -v
 
-      - name: Train BPE model
-        run: python train_tokenizer.py bpe examples/corpus.txt --output /tmp/bpe.json --vocab-size 64
-
-      - name: Train WordPiece model
-        run: python train_tokenizer.py wordpiece examples/corpus.txt --output /tmp/wordpiece.json --vocab-size 64
-
-      - name: Train SentencePiece-style model
-        run: python train_tokenizer.py sentencepiece examples/corpus.txt --output /tmp/sentencepiece.json --vocab-size 64
-
-      - name: Verify tokenizer model files
+      - name: Train downloadable tokenizer models
         run: |
-          test -s /tmp/bpe.json
-          test -s /tmp/wordpiece.json
-          test -s /tmp/sentencepiece.json
+          mkdir -p build/models
+          python train_tokenizer.py bpe examples/corpus.txt --output build/models/bpe.json --vocab-size 64
+          python train_tokenizer.py wordpiece examples/corpus.txt --output build/models/wordpiece.json --vocab-size 64
+          python train_tokenizer.py sentencepiece examples/corpus.txt --output build/models/sentencepiece.json --vocab-size 64
+
+      - name: Register models in token repository
+        run: |
+          python token_repository.py add build/models/bpe.json --name korean-demo --type bpe --version 1.0.0
+          python token_repository.py add build/models/wordpiece.json --name korean-demo --type wordpiece --version 1.0.0
+          python token_repository.py add build/models/sentencepiece.json --name korean-demo --type sentencepiece --version 1.0.0
+
+      - name: Verify token repository
+        run: python token_repository.py verify
+
+      - name: Build token download bundle
+        run: python token_repository.py export
+
+      - name: Verify download bundle
+        run: |
+          test -s token_repository/downloads/python-token-repository.zip
+          test -s token_repository/downloads/token-models/manifest.json
+          test -s token_repository/downloads/token-models/SHA256SUMS.txt
+
+      - name: Upload tokenizer download repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-token-repository
+          path: |
+            token_repository/downloads/python-token-repository.zip
+            token_repository/downloads/token-models/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Compile Python sources
         run: python -m compileall -q .
