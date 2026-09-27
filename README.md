@@ -102,3 +102,73 @@ python -m unittest discover -s tests -v
 4. 토크나이저 스모크 테스트
 5. 토크나이저 단위 테스트
 6. Python 소스 컴파일 검사
+
+
+## 고급 토크나이저
+
+추가로 `advanced_tokenizers.py`에서 다음 학습형 토크나이저를 제공합니다.
+
+- `BPETokenizer`
+- `WordPieceTokenizer`
+- `SentencePieceStyleTokenizer`
+
+> 주의: `SentencePieceStyleTokenizer`는 Google SentencePiece 라이브러리 자체가 아니라, 경계 기호(`▁`)와 서브워드 학습 개념을 학습용으로 구현한 경량 버전입니다.
+
+### BPE 학습
+
+```powershell
+python train_tokenizer.py bpe examples/corpus.txt --output bpe.json --vocab-size 128
+```
+
+### WordPiece 학습
+
+```powershell
+python train_tokenizer.py wordpiece examples/corpus.txt --output wordpiece.json --vocab-size 128
+```
+
+### SentencePiece 스타일 학습
+
+```powershell
+python train_tokenizer.py sentencepiece examples/corpus.txt --output sentencepiece.json --vocab-size 128
+```
+
+각 모델 JSON에는 vocabulary와 학습 설정이 저장됩니다.
+
+Python 코드에서 직접 사용할 수도 있습니다.
+
+```python
+from advanced_tokenizers import train_tokenizer
+
+corpus = [
+    "안녕하세요 파이썬 토크나이저",
+    "hello python tokenizer",
+]
+
+tokenizer = train_tokenizer(
+    "bpe",
+    corpus,
+    vocab_size=128,
+    lowercase=True,
+)
+
+print(tokenizer.tokenize("Hello Python"))
+print(tokenizer.encode("Hello Python"))
+tokenizer.save("bpe.json")
+```
+
+## 토크나이저 구조
+
+현재 저장소에는 두 계층의 토크나이저가 있습니다.
+
+1. `SimpleTokenizer`
+   - 빠른 규칙 기반 토큰 분리
+   - padding / truncation
+   - vocabulary 저장 및 복원
+
+2. 학습형 서브워드 토크나이저
+   - BPE
+   - WordPiece
+   - SentencePiece 스타일
+   - corpus 기반 vocabulary 학습
+   - JSON 모델 저장
+
