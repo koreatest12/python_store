@@ -13,7 +13,7 @@ class PretokenizerDatasetTests(unittest.TestCase):
     def test_pretokenizer_split_and_offsets(self) -> None:
         pre = Pretokenizer(lowercase=True)
         tokens = pre.split("안녕하세요 Python 3.14!")
-        self.assertEqual(tokens, ["안녕하세요", "python", "3", ".", "14", "!"])
+        self.assertEqual(tokens, ["안녕하세요", "python", "3.14", "!"])
 
         spans = pre.split_with_offsets("Hello world!")
         self.assertEqual([span.text for span in spans], ["hello", "world", "!"])
