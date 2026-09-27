@@ -1,0 +1,65 @@
+name: Data Token Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: Bot command
+        required: true
+        type: choice
+        options:
+          - status
+          - prepare-dataset
+          - train-register
+          - export
+      tokenizer:
+        description: Tokenizer type for train-register
+        required: false
+        default: bpe
+        type: choice
+        options:
+          - bpe
+          - wordpiece
+          - sentencepiece
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.7"
+
+      - name: Run bot status
+        if: inputs.command == 'status'
+        run: python bot.py status
+
+      - name: Prepare example dataset
+        if: inputs.command == 'prepare-dataset'
+        run: python bot.py prepare-dataset examples/dataset.jsonl --format jsonl --lowercase
+
+      - name: Train and register tokenizer
+        if: inputs.command == 'train-register'
+        run: python bot.py train-register examples/corpus.txt --kind "${{ inputs.tokenizer }}" --name github-bot-demo --version 1.0.0 --vocab-size 128
+
+      - name: Export repository
+        if: inputs.command == 'export'
+        run: python bot.py export
+
+      - name: Upload bot workspace
+        uses: actions/upload-artifact@v7
+        with:
+          name: data-token-bot-output
+          path: |
+            bot_workspace/
+            token_repository/
+          if-no-files-found: warn
+          retention-days: 30
