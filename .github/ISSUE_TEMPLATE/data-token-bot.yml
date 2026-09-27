@@ -1,0 +1,30 @@
+name: Data Token Bot Request
+description: Request dataset or tokenizer management work
+title: "[bot] "
+labels:
+  - bot
+body:
+  - type: dropdown
+    id: action
+    attributes:
+      label: Action
+      options:
+        - status
+        - prepare-dataset
+        - train-register
+        - export
+    validations:
+      required: true
+  - type: dropdown
+    id: tokenizer
+    attributes:
+      label: Tokenizer
+      options:
+        - bpe
+        - wordpiece
+        - sentencepiece
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Dataset/model name, version, or other details
