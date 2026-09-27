@@ -82,5 +82,11 @@ jobs:
           test -s build/pretokenized-jsonl.jsonl
           test -s build/pretokenized-csv.jsonl
 
+      - name: Run data token bot status
+        run: python bot.py status
+
+      - name: Prepare dataset with bot
+        run: python bot.py prepare-dataset examples/dataset.jsonl --format jsonl --lowercase
+
       - name: Compile Python sources
         run: python -m compileall -q .

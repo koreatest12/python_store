@@ -301,3 +301,58 @@ python prepare_dataset.py examples/dataset.csv --format csv --output build/preto
 - 각 token의 start/end offset
 
 이 기능은 이후 BPE / WordPiece / SentencePiece 스타일 vocabulary 학습 전처리 단계에도 활용할 수 있습니다.
+
+
+## 데이터·토큰 관리 봇
+
+`bot.py`는 이 저장소의 데이터셋과 토크나이저 모델을 한 곳에서 관리하기 위한 관리 봇입니다.
+
+지원 명령:
+
+- `status`: 토큰 보관소 무결성과 등록 모델 수 확인
+- `prepare-dataset`: TXT/JSONL/CSV 데이터셋 사전 토큰화 및 분할 통계 생성
+- `train-register`: BPE / WordPiece / SentencePiece 스타일 모델 학습 후 토큰 보관소 등록
+- `export`: 토큰 다운로드 보관소 ZIP 생성
+
+### 로컬 실행
+
+상태 확인:
+
+```powershell
+python bot.py status
+```
+
+데이터셋 준비:
+
+```powershell
+python bot.py prepare-dataset examples/dataset.jsonl --format jsonl --lowercase
+```
+
+BPE 학습 및 등록:
+
+```powershell
+python bot.py train-register examples/corpus.txt --kind bpe --name korean-bot --version 1.0.0 --vocab-size 128
+```
+
+다운로드 보관소 생성:
+
+```powershell
+python bot.py export
+```
+
+### GitHub Actions Bot
+
+`.github/workflows/data-token-bot.yml`에서 **Run workflow**로 다음 명령을 선택 실행할 수 있습니다.
+
+- status
+- prepare-dataset
+- train-register
+- export
+
+실행 결과는 `data-token-bot-output` Artifact로 저장됩니다.
+
+### GitHub Issue 요청 양식
+
+`.github/ISSUE_TEMPLATE/data-token-bot.yml`도 추가되어 있어 GitHub Issue에서 데이터/토큰 관리 요청을 구조화해 등록할 수 있습니다.
+
+현재 봇은 저장소 내부 Python CLI와 GitHub Actions를 연결하는 방식이며, 별도 외부 서버나 API 토큰 없이 GitHub 기본 권한 범위에서 동작합니다.
