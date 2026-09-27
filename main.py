@@ -24,7 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    args = build_parser()
+    args = build_parser().parse_args()
 
     print("python_store")
     print(f"Python: {platform.python_version()}")
