@@ -4,7 +4,7 @@ import argparse
 import hashlib
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -91,7 +91,7 @@ class TokenRepository:
                 and item["version"] == version
             )
         ]
-        manifest["artifacts"].append(artifact.__dict__)
+        manifest["artifacts"].append(asdict(artifact))
         manifest["artifacts"].sort(
             key=lambda item: (item["model_type"], item["name"], item["version"])
         )
@@ -187,7 +187,7 @@ def main() -> None:
             model_type=args.model_type,
             version=args.version,
         )
-        print(json.dumps(artifact.__dict__, ensure_ascii=False, indent=2))
+        print(json.dumps(asdict(artifact), ensure_ascii=False, indent=2))
     elif args.command == "list":
         print(json.dumps(repository.list(), ensure_ascii=False, indent=2))
     elif args.command == "verify":
