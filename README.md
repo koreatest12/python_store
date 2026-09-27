@@ -380,3 +380,41 @@ Pretokenizer의 offset은 **정규화된 텍스트 기준**입니다. NFKC 변�
 ### CI 전체 실행 정책
 
 Python CI의 핵심 검증 단계에는 `if: always()`를 적용했습니다. 앞 단계가 실패해도 이후 보안 테스트, Unicode 테스트, 모델 학습, 보관소 검증, 데이터셋 준비, 봇 검사, 컴파일 검사가 가능한 범위에서 끝까지 실행되어 어떤 단계가 추가로 실패하는지 한 번에 확인할 수 있습니다.
+
+
+## 5분 주기 자동 순환
+
+`.github/workflows/data-token-bot.yml`은 이제 다음 스케줄을 사용합니다.
+
+```yaml
+schedule:
+  - cron: "*/5 * * * *"
+```
+
+즉, GitHub Actions 스케줄 기준으로 **5분마다 Data Token Bot 전체 사이클**이 실행됩니다.
+
+자동 cycle 순서:
+
+1. 토큰 보관소 상태 확인
+2. JSONL 데이터셋 사전 토큰화
+3. CSV 데이터셋 사전 토큰화
+4. BPE 학습 및 등록
+5. WordPiece 학습 및 등록
+6. SentencePiece 스타일 학습 및 등록
+7. 토큰 보관소 검증
+8. 다운로드 ZIP export
+9. 최종 상태 확인
+
+`bot.py cycle`은 중간 단계에서 예외가 발생해도 뒤 단계를 계속 실행하고, 마지막에 `latest-cycle.json`으로 전체 성공/실패 내역을 남깁니다.
+
+수동 실행:
+
+```powershell
+python bot.py cycle
+```
+
+GitHub Actions에서는 스케줄 실행 또는 **Run workflow → cycle** 선택으로 동일한 전체 순환을 실행할 수 있습니다.
+
+중복 실행 방지를 위해 concurrency group을 사용하며, 각 실행 결과는 run 번호가 포함된 `data-token-bot-output-<run_number>` Artifact로 30일간 저장됩니다.
+
+> GitHub Actions의 scheduled workflow는 5분 간격으로 설정할 수 있지만, GitHub 서비스 부하에 따라 실제 시작 시각은 몇 분 지연될 수 있습니다.
