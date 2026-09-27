@@ -1,0 +1,4 @@
+text,label,source
+"안녕하세요 CSV 데이터셋입니다",ko,example
+"Python CSV dataset example",en,example
+"한글 English mixed dataset",mixed,example

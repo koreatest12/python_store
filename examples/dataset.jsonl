@@ -1,0 +1,5 @@
+{"text":"안녕하세요 파이썬 데이터셋입니다","label":"ko"}
+{"text":"Python tokenizer dataset example","label":"en"}
+{"text":"한글과 English를 함께 처리합니다","label":"mixed"}
+{"text":"사전 토큰화 기능을 테스트합니다","label":"ko"}
+{"text":"Dataset batching and splitting example","label":"en"}
