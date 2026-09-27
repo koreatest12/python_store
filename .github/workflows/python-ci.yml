@@ -36,5 +36,20 @@ jobs:
       - name: Run tokenizer tests
         run: python -m unittest discover -s tests -v
 
+      - name: Train BPE model
+        run: python train_tokenizer.py bpe examples/corpus.txt --output /tmp/bpe.json --vocab-size 64
+
+      - name: Train WordPiece model
+        run: python train_tokenizer.py wordpiece examples/corpus.txt --output /tmp/wordpiece.json --vocab-size 64
+
+      - name: Train SentencePiece-style model
+        run: python train_tokenizer.py sentencepiece examples/corpus.txt --output /tmp/sentencepiece.json --vocab-size 64
+
+      - name: Verify tokenizer model files
+        run: |
+          test -s /tmp/bpe.json
+          test -s /tmp/wordpiece.json
+          test -s /tmp/sentencepiece.json
+
       - name: Compile Python sources
         run: python -m compileall -q .
