@@ -111,6 +111,14 @@ jobs:
         if: always()
         run: python bot.py prepare-dataset examples/dataset.jsonl --format jsonl --lowercase
 
+      - name: Generate Tiny Code examples
+        if: always()
+        run: python tiny_code.py all --output-dir build/tiny_code
+
+      - name: Verify Tiny Code syntax
+        if: always()
+        run: python -m compileall -q build/tiny_code
+
       - name: Compile Python sources
         if: always()
         run: python -m compileall -q .

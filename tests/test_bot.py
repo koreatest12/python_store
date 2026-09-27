@@ -49,9 +49,18 @@ class DataTokenBotTests(unittest.TestCase):
             )
 
             self.assertEqual(report.status, "ok")
-            self.assertEqual(report.details["stage_count"], 9)
+            self.assertEqual(report.details["stage_count"], 10)
             self.assertEqual(report.details["failed_stage_count"], 0)
             self.assertTrue((base / "workspace" / "reports" / "latest-cycle.json").exists())
+
+    def test_generate_tiny_code(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            bot = DataTokenBot(Path(directory) / "workspace")
+            report = bot.generate_tiny_code()
+            self.assertEqual(report.status, "ok")
+            self.assertEqual(report.details["generated"], 6)
+            for file in report.details["files"]:
+                self.assertTrue(Path(file).exists())
 
     def test_train_and_register(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
