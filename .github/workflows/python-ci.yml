@@ -31,7 +31,10 @@ jobs:
         run: python -m pip install --upgrade pip setuptools wheel
 
       - name: Run application smoke test
-        run: python main.py
+        run: python main.py "안녕하세요 Python tokenizer 3.14!"
+
+      - name: Run tokenizer tests
+        run: python -m unittest discover -s tests -v
 
       - name: Compile Python sources
         run: python -m compileall -q .
