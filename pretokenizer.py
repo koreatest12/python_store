@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from dataclasses import dataclass
 from typing import Iterable
 
-_TOKEN_PATTERN = re.compile(
-    r"[가-힣]+|[A-Za-z]+(?:'[A-Za-z]+)?|\d+(?:[.,]\d+)*|[^\w\s]",
-    re.UNICODE,
-)
+from text_utils import normalize_text, split_unicode_tokens
 
 
 @dataclass(slots=True)
@@ -25,29 +21,31 @@ class Pretokenizer:
     collapse_whitespace: bool = True
 
     def normalize(self, text: str) -> str:
-        normalized = unicodedata.normalize("NFKC", text)
-        if self.strip_accents:
-            normalized = "".join(
-                ch
-                for ch in unicodedata.normalize("NFD", normalized)
-                if unicodedata.category(ch) != "Mn"
-            )
-        if self.lowercase:
-            normalized = normalized.lower()
+        normalized = normalize_text(
+            text,
+            lowercase=self.lowercase,
+            strip_accents=self.strip_accents,
+        )
         if self.collapse_whitespace:
             normalized = re.sub(r"\s+", " ", normalized).strip()
         return normalized
 
     def split(self, text: str) -> list[str]:
-        normalized = self.normalize(text)
-        return _TOKEN_PATTERN.findall(normalized)
+        return split_unicode_tokens(self.normalize(text))
 
     def split_with_offsets(self, text: str) -> list[PretokenizedSpan]:
         normalized = self.normalize(text)
-        return [
-            PretokenizedSpan(match.group(0), match.start(), match.end())
-            for match in _TOKEN_PATTERN.finditer(normalized)
-        ]
+        tokens = split_unicode_tokens(normalized)
+        spans: list[PretokenizedSpan] = []
+        cursor = 0
+        for token in tokens:
+            start = normalized.find(token, cursor)
+            if start < 0:
+                continue
+            end = start + len(token)
+            spans.append(PretokenizedSpan(token, start, end))
+            cursor = end
+        return spans
 
     def batch(self, texts: Iterable[str]) -> list[list[str]]:
         return [self.split(text) for text in texts]
