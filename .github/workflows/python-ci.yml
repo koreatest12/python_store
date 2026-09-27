@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.14
         uses: actions/setup-python@v6
@@ -62,7 +62,7 @@ jobs:
           test -s token_repository/downloads/token-models/SHA256SUMS.txt
 
       - name: Upload tokenizer download repository
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-token-repository
           path: |
