@@ -356,3 +356,27 @@ python bot.py export
 `.github/ISSUE_TEMPLATE/data-token-bot.yml`도 추가되어 있어 GitHub Issue에서 데이터/토큰 관리 요청을 구조화해 등록할 수 있습니다.
 
 현재 봇은 저장소 내부 Python CLI와 GitHub Actions를 연결하는 방식이며, 별도 외부 서버나 API 토큰 없이 GitHub 기본 권한 범위에서 동작합니다.
+
+
+## 안정성 및 보안 보강
+
+최근 보강된 사항:
+
+- TokenRepository의 name/version/filename에 화이트리스트 검증 적용
+- resolve() + is_relative_to() 이중 검증으로 디렉터리 트래버설 방지
+- manifest의 file 경로를 저장소 root 기준 상대경로로 저장
+- 자모, 악센트 문자, 한자, underscore, 이모지를 조용히 버리지 않도록 Unicode-safe 분리 적용
+- SentencePiece 스타일 학습 시 corpus의 단일 문자 커버리지를 우선 보장
+- WordPiece는 실제 production WordPiece보다 단순화한 학습용 경량 구현임을 명시
+- build_tokenized_dataset()은 inspect.signature()로 max_length 지원 여부를 확인
+- SimpleTokenizer.decode()는 일반 문장부호 앞 불필요한 공백을 줄이도록 개선
+- 패키지 Python 요구 버전은 >=3.10
+- GitHub Actions setup-python은 v7 사용
+
+### offset 주의사항
+
+Pretokenizer의 offset은 **정규화된 텍스트 기준**입니다. NFKC 변환, lowercase, accent 제거, 공백 축약이 적용되면 원문 위치와 달라질 수 있습니다. 원문 기준 위치가 필요한 경우 별도의 원문-정규화 매핑 계층이 필요합니다.
+
+### CI 전체 실행 정책
+
+Python CI의 핵심 검증 단계에는 `if: always()`를 적용했습니다. 앞 단계가 실패해도 이후 보안 테스트, Unicode 테스트, 모델 학습, 보관소 검증, 데이터셋 준비, 봇 검사, 컴파일 검사가 가능한 범위에서 끝까지 실행되어 어떤 단계가 추가로 실패하는지 한 번에 확인할 수 있습니다.
