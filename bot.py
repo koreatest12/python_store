@@ -11,6 +11,7 @@ from advanced_tokenizers import train_tokenizer
 from dataset import TextDataset
 from pretokenizer import Pretokenizer
 from token_repository import TokenRepository
+from tiny_code import TinyCodeGenerator
 
 
 @dataclass(slots=True)
@@ -27,9 +28,11 @@ class DataTokenBot:
         self.models_dir = self.workspace / "models"
         self.datasets_dir = self.workspace / "datasets"
         self.reports_dir = self.workspace / "reports"
+        self.tiny_code_dir = self.workspace / "tiny_code"
         self.models_dir.mkdir(exist_ok=True)
         self.datasets_dir.mkdir(exist_ok=True)
         self.reports_dir.mkdir(exist_ok=True)
+        self.tiny_code_dir.mkdir(exist_ok=True)
 
     def status(self) -> BotReport:
         token_repo = TokenRepository()
@@ -125,6 +128,18 @@ class DataTokenBot:
             },
         )
 
+    def generate_tiny_code(self) -> BotReport:
+        generator = TinyCodeGenerator(self.tiny_code_dir)
+        artifacts = generator.generate_all()
+        return BotReport(
+            "tiny-code",
+            "ok",
+            {
+                "generated": len(artifacts),
+                "files": [artifact.path for artifact in artifacts],
+            },
+        )
+
     def export_repository(self) -> BotReport:
         repository = TokenRepository()
         archive = repository.export_download_bundle()
@@ -205,6 +220,7 @@ class DataTokenBot:
                 ),
             )
 
+        run_stage("generate-tiny-code", self.generate_tiny_code)
         run_stage("verify-repository", self.status)
         run_stage("export-repository", self.export_repository)
         run_stage("status-after", self.status)
@@ -252,6 +268,7 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--vocab-size", type=int, default=128)
 
     sub.add_parser("export")
+    sub.add_parser("tiny-code")
 
     cycle = sub.add_parser("cycle")
     cycle.add_argument("--jsonl-dataset", default="examples/dataset.jsonl")
@@ -285,6 +302,8 @@ def main() -> None:
         )
     elif args.command == "export":
         report = bot.export_repository()
+    elif args.command == "tiny-code":
+        report = bot.generate_tiny_code()
     else:
         report = bot.cycle(
             jsonl_dataset=args.jsonl_dataset,
