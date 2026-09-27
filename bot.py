@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 from advanced_tokenizers import train_tokenizer
 from dataset import TextDataset
@@ -24,8 +26,10 @@ class DataTokenBot:
         self.workspace.mkdir(parents=True, exist_ok=True)
         self.models_dir = self.workspace / "models"
         self.datasets_dir = self.workspace / "datasets"
+        self.reports_dir = self.workspace / "reports"
         self.models_dir.mkdir(exist_ok=True)
         self.datasets_dir.mkdir(exist_ok=True)
+        self.reports_dir.mkdir(exist_ok=True)
 
     def status(self) -> BotReport:
         token_repo = TokenRepository()
@@ -113,6 +117,7 @@ class DataTokenBot:
             "train-register",
             "ok",
             {
+                "kind": kind,
                 "model": artifact.file,
                 "sha256": artifact.sha256,
                 "size_bytes": artifact.size_bytes,
@@ -131,6 +136,100 @@ class DataTokenBot:
                 "registered_models": len(repository.list()),
             },
         )
+
+    def cycle(
+        self,
+        *,
+        jsonl_dataset: str | Path = "examples/dataset.jsonl",
+        csv_dataset: str | Path = "examples/dataset.csv",
+        corpus: str | Path = "examples/corpus.txt",
+        version: str = "1.0.0",
+        vocab_size: int = 128,
+    ) -> BotReport:
+        """Run a full data/token refresh cycle without skipping later stages.
+
+        Every stage is attempted even if an earlier one fails. The final report
+        records each stage result, and the overall status becomes "failed" when
+        one or more stages fail.
+        """
+
+        started_at = datetime.now(timezone.utc).isoformat()
+        stages: list[dict] = []
+
+        def run_stage(name: str, action: Callable[[], BotReport]) -> None:
+            try:
+                report = action()
+                stages.append(
+                    {
+                        "stage": name,
+                        "status": report.status,
+                        "details": report.details,
+                    }
+                )
+            except Exception as exc:
+                stages.append(
+                    {
+                        "stage": name,
+                        "status": "failed",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+
+        run_stage("status-before", self.status)
+        run_stage(
+            "prepare-jsonl",
+            lambda: self.prepare_dataset(
+                jsonl_dataset,
+                source_format="jsonl",
+                lowercase=True,
+            ),
+        )
+        run_stage(
+            "prepare-csv",
+            lambda: self.prepare_dataset(
+                csv_dataset,
+                source_format="csv",
+                lowercase=True,
+            ),
+        )
+
+        for kind in ("bpe", "wordpiece", "sentencepiece"):
+            run_stage(
+                f"train-{kind}",
+                lambda kind=kind: self.train_and_register(
+                    corpus,
+                    kind=kind,
+                    name=f"cycle-{kind}",
+                    version=version,
+                    vocab_size=vocab_size,
+                ),
+            )
+
+        run_stage("verify-repository", self.status)
+        run_stage("export-repository", self.export_repository)
+        run_stage("status-after", self.status)
+
+        failed = [stage for stage in stages if stage["status"] != "ok"]
+        status = "failed" if failed else "ok"
+
+        report = BotReport(
+            "cycle",
+            status,
+            {
+                "started_at": started_at,
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+                "stage_count": len(stages),
+                "failed_stage_count": len(failed),
+                "stages": stages,
+            },
+        )
+
+        report_path = self.reports_dir / "latest-cycle.json"
+        report_path.write_text(
+            json.dumps(asdict(report), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -153,6 +252,13 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--vocab-size", type=int, default=128)
 
     sub.add_parser("export")
+
+    cycle = sub.add_parser("cycle")
+    cycle.add_argument("--jsonl-dataset", default="examples/dataset.jsonl")
+    cycle.add_argument("--csv-dataset", default="examples/dataset.csv")
+    cycle.add_argument("--corpus", default="examples/corpus.txt")
+    cycle.add_argument("--version", default="1.0.0")
+    cycle.add_argument("--vocab-size", type=int, default=128)
 
     return parser
 
@@ -177,10 +283,20 @@ def main() -> None:
             version=args.version,
             vocab_size=args.vocab_size,
         )
-    else:
+    elif args.command == "export":
         report = bot.export_repository()
+    else:
+        report = bot.cycle(
+            jsonl_dataset=args.jsonl_dataset,
+            csv_dataset=args.csv_dataset,
+            corpus=args.corpus,
+            version=args.version,
+            vocab_size=args.vocab_size,
+        )
 
     print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
+    if report.status != "ok":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
