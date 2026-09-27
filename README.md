@@ -10,6 +10,49 @@
 - `pyproject.toml`: Python 3.14.x 요구
 - GitHub Actions: Python 3.14.7 자동 설치 및 실행 검증
 
+## 토크나이저
+
+`tokenizer.py`에 외부 라이브러리 없이 동작하는 `SimpleTokenizer`가 포함되어 있습니다.
+
+지원 기능:
+
+- Unicode NFKC 정규화
+- 한글, 영문, 숫자, 문장부호 토큰 분리
+- 선택적 영문 소문자 변환
+- Vocabulary 자동 생성
+- `<PAD>`, `<UNK>` 특수 토큰
+- 문자열 → Token ID 인코딩
+- Token ID → 문자열 디코딩
+- 최대 길이 기준 padding / truncation
+- Vocabulary JSON 저장 / 불러오기
+
+간단한 실행:
+
+```powershell
+python main.py "안녕하세요 Python tokenizer 3.14!"
+```
+
+Python 코드에서 사용:
+
+```python
+from tokenizer import SimpleTokenizer
+
+tokenizer = SimpleTokenizer(lowercase=True)
+tokenizer.fit([
+    "안녕하세요 Python tokenizer",
+    "Python 토크나이저 테스트",
+])
+
+tokens = tokenizer.tokenize("안녕하세요 Python!")
+ids = tokenizer.encode("안녕하세요 Python!", max_length=8)
+
+print(tokens)
+print(ids)
+
+tokenizer.save("tokenizer.json")
+restored = SimpleTokenizer.load("tokenizer.json")
+```
+
 ## Windows 설치
 
 Python 공식 설치 관리자를 사용하거나 Python.org에서 Python 3.14.7을 설치한 뒤 다음 명령으로 확인합니다.
@@ -43,13 +86,11 @@ python -m pip install --upgrade pip
 python main.py
 ```
 
-## 실행
+## 테스트
 
 ```bash
-python main.py
+python -m unittest discover -s tests -v
 ```
-
-프로그램은 현재 사용 중인 Python 버전과 실행 파일 경로를 출력합니다.
 
 ## CI
 
@@ -58,5 +99,6 @@ python main.py
 1. Python 3.14.7 설치
 2. Python 버전 출력
 3. pip / setuptools / wheel 업그레이드
-4. `main.py` 스모크 테스트
-5. Python 소스 컴파일 검사
+4. 토크나이저 스모크 테스트
+5. 토크나이저 단위 테스트
+6. Python 소스 컴파일 검사
