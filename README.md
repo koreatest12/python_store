@@ -172,3 +172,50 @@ tokenizer.save("bpe.json")
    - corpus 기반 vocabulary 학습
    - JSON 모델 저장
 
+
+
+## 토큰 다운로드 보관소
+
+`token_repository/`는 학습된 토크나이저 모델과 vocabulary를 버전별로 관리하고 다운로드할 수 있도록 구성한 전용 보관소입니다.
+
+주요 기능:
+
+- BPE / WordPiece / SentencePiece 스타일 / SimpleTokenizer 모델 등록
+- 모델 이름과 버전별 디렉터리 관리
+- `manifest.json` 메타데이터 관리
+- SHA256 무결성 검증
+- 다운로드용 ZIP 자동 생성
+- GitHub Actions에서 `python-token-repository` Artifact 자동 업로드
+- CI 실행 결과의 Artifacts 영역에서 ZIP 및 모델 디렉터리 다운로드 가능
+
+### 모델 등록
+
+```powershell
+python token_repository.py add bpe.json --name korean-demo --type bpe --version 1.0.0
+```
+
+### 등록 모델 확인
+
+```powershell
+python token_repository.py list
+```
+
+### 무결성 확인
+
+```powershell
+python token_repository.py verify
+```
+
+### 다운로드 ZIP 생성
+
+```powershell
+python token_repository.py export
+```
+
+생성 파일:
+
+```text
+token_repository/downloads/python-token-repository.zip
+```
+
+GitHub Actions가 실행되면 BPE, WordPiece, SentencePiece 스타일 예제 모델을 자동 학습하고 이 보관소에 등록한 뒤 `python-token-repository`라는 다운로드 Artifact로 제공합니다.
